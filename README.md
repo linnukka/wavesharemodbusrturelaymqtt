@@ -171,13 +171,10 @@ Project Link: [https://github.com/linnukka/wavesharemodbusrturelaymqtt](https://
 
 
 
-<!-- ACKNOWLEDGMENTS
+ACKNOWLEDGMENTS
 ## Acknowledgments
 
-* []()
-* []()
-* []()
- -->
+* [othneildrew](For the <a href="https://github.com/othneildrew/Best-README-Template">README-Template</a>)
  
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
