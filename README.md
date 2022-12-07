@@ -21,17 +21,12 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
 
 
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/linnukka/wavesharemodbusrturelaymqtt">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
-
-<h3 align="center">Waveshare modbus rtu relay board to mqtt python interface</h3>
+<h3 align="center">Waveshare Modbus RTU relay board to mqtt python interface</h3>
 
   <p align="center">
     Simple program to enable use of waveshare modbus rtu relay board with mqtt commands e.g. with home assistant.
@@ -81,6 +76,7 @@
 
 ### Built With
 
+<!-- 
 * [![Next][Next.js]][Next-url]
 * [![React][React.js]][React-url]
 * [![Vue][Vue.js]][Vue-url]
@@ -91,65 +87,54 @@
 * [![JQuery][JQuery.com]][JQuery-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
+-->
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+1) Setup RS485 serial adapter and connect to Waveshare Modbus RTU relay board
+2) Grant permissions to correct device eg. /dev/ttyUSB0 by adding user to dialout group 
 
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
-* npm
+* Required python libraries
   ```sh
-  npm install npm@latest -g
+  pip3 install pytz paho-mqtt configparser pymodbus pyserial
   ```
-
 ### Installation
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
    ```sh
    git clone https://github.com/linnukka/wavesharemodbusrturelaymqtt.git
    ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
+2. Tailor modbusrelay.conf and modbusrelay_logging.conf to your taste
+
+3. Create mqtt_credentials.conf file to store username and password, see tags from the modbusrelay.conf file
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
+Run modbusrelay.py to connect mqtt to modbus board:
+  ```sh
+  python3 modbusrelay.py
+  ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
+- Create deamon files & examples
+- Tidy up test script
+- Create Home Assistant integration example
 
 See the [open issues](https://github.com/linnukka/wavesharemodbusrturelaymqtt/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -167,8 +152,6 @@ Don't forget to give the project a star! Thanks again!
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
 <!-- LICENSE -->
 ## License
 
@@ -177,11 +160,10 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
 <!-- CONTACT -->
 ## Contact
 
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - julli@iki.fi
+Juha - julli@iki.fi
 
 Project Link: [https://github.com/linnukka/wavesharemodbusrturelaymqtt](https://github.com/linnukka/wavesharemodbusrturelaymqtt)
 
@@ -189,13 +171,14 @@ Project Link: [https://github.com/linnukka/wavesharemodbusrturelaymqtt](https://
 
 
 
-<!-- ACKNOWLEDGMENTS -->
+<!-- ACKNOWLEDGMENTS
 ## Acknowledgments
 
 * []()
 * []()
 * []()
-
+ -->
+ 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
