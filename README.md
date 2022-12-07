@@ -44,12 +44,12 @@
 <details>
   <summary>Table of Contents</summary>
   <ol>
-    <li>
+    <!--<li>
       <a href="#about-the-project">About The Project</a>
       <ul>
         <li><a href="#built-with">Built With</a></li>
       </ul>
-    </li>
+    </li>-->
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
@@ -68,15 +68,14 @@
 
 
 
-<!-- ABOUT THE PROJECT -->
+<!-- ABOUT THE PROJECT 
 ## About The Project
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
+-->
+<!-- 
 ### Built With
 
-<!-- 
 * [![Next][Next.js]][Next-url]
 * [![React][React.js]][React-url]
 * [![Vue][Vue.js]][Vue-url]
@@ -163,15 +162,10 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Juha - julli@iki.fi
-
 Project Link: [https://github.com/linnukka/wavesharemodbusrturelaymqtt](https://github.com/linnukka/wavesharemodbusrturelaymqtt)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
-
-ACKNOWLEDGMENTS
 ## Acknowledgments
 
 * [othneildrew](For the <a href="https://github.com/othneildrew/Best-README-Template">README-Template</a>)
