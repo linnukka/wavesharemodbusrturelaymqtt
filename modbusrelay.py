@@ -54,11 +54,13 @@ logger.info('Log level is %s', logging.getLevelName(logger.level))
 
 confSiteName = configParser.get('MQTT', 'siteName')
 confPubTopicPrefix = configParser.get('MQTT', 'pubTopicPrefix')
+confPubTopicStateSuffix = configParser.get('MQTT', 'pubTopicStateSuffix')
 confSubTopicPrefix = configParser.get('MQTT', 'subTopicPrefix')
 confCmdTopicSuffix = configParser.get('MQTT', 'cmdTopicSuffix')
 confRelayOnCommandPayload = configParser.get('MQTT', 'relayOnCommandPayload')
 confRelayOffCommandPayload = configParser.get('MQTT', 'relayOffCommandPayload')
 confRelayStatusCommandPayload = configParser.get('MQTT', 'relayStatusCommandPayload')
+
 
 logger.debug('----------------- starting modbus relay interface -----------------')
 
@@ -172,6 +174,17 @@ def processCmdMessages():
                     logger.warning("Incorrect channel number!, skipped")
         else:
             logger.warning("Target board not found, skipped")    
+        
+        updateStates()
+
+def updateStates():
+    logger.debug("Updating relay states")
+    for i in range(len(boardNames)):
+
+        mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
+        for j in range(8):
+            mqttc.publish(pubTopics[i]+"/CH"+str(j+1)+confPubTopicStateSuffix, boards[i].getChannelState((j+1)), qos=mqttQos,retain=mqttRetain)
+    logger.debug("Relay states updated")
 
 
 #called on exit
@@ -189,7 +202,7 @@ def connectMqtt():
         mqttc.on_publish = on_publish
         mqttc.on_subscribe = on_subscribe
         mqttc.on_message = on_message
-        mqttc.username_pw_set(configParser.get('MQTT', 'mqttUsername'), configParser.get('MQTT', 'mqttPasswd'))
+        mqttc.username_pw_set(credConfigParser.get('MQTT', 'mqttUsername'), credConfigParser.get('MQTT', 'mqttPasswd'))
         mqttc.message_callback_add(configParser.get('MQTT', 'callbackTopicPrefix') + clientName + configParser.get('MQTT', 'callbackTopicSuffix'), on_message_output)
 
         #connect to broker

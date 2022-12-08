@@ -53,6 +53,10 @@ class WaveshareModbusRtuRelayBoard:
     def getrelayboardName(self):
         return self.relayboardName
 
+    def getChannelState(self, channelNumber):
+        channelName = "CH" + str(channelNumber)
+        return self.coilsDict[channelName]
+
     def readRelays(self):
         self.logger.debug("Relays %s reading starts, unit number %d", self.relayboardName, self.modbusAddress)
 
