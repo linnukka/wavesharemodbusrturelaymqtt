@@ -25,245 +25,252 @@ from wavesharemodbusrturelayboard import WaveshareModbusRtuRelayBoard
 from pymodbus.client import ModbusSerialClient 
 from pymodbus.transaction import (ModbusAsciiFramer,ModbusRtuFramer)
 
-# CONFIG
-configParser = configparser.RawConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
-configFilePath = '/home/j/scripts/modbusrelay/modbusrelay.conf'
-configParser.read(configFilePath)
-credConfigParser = configparser.RawConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
-credConfigFilePath = '/home/j/scripts/modbusrelay/mqtt_credentials.conf'
-credConfigParser.read(credConfigFilePath)
+if __name__ == '__main__':
 
-log_level = configParser.get('LOGGER', 'logLevel')
-client = ModbusSerialClient(method=configParser.get('MODBUS', 'method'), 
-                            port=configParser.get('MODBUS', 'port'), 
-                            timeout=configParser.getint('MODBUS', 'timeout'), 
-                            stopbits = configParser.getint('MODBUS', 'stopbits'), 
-                            bytesize = configParser.getint('MODBUS', 'bytesize'),  
-                            parity=configParser.get('MODBUS', 'parity'), 
-                            baudrate=configParser.getint('MODBUS', 'baudrate'))
-clientName = configParser.get('MQTT', 'clientName')
-mqttQos = configParser.getint('MQTT', 'mqttQos')
-mqttRetain = configParser.getboolean('MQTT', 'mqttRetain')
+    # CONFIG
+    configParser = configparser.RawConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
+    configFilePath = '/home/j/scripts/modbusrelay/modbusrelay.conf'
+    configParser.read(configFilePath)
+    credConfigParser = configparser.RawConfigParser(converters={'list': lambda x: [i.strip() for i in x.split(',')]})
+    credConfigFilePath = '/home/j/scripts/modbusrelay/mqtt_credentials.conf'
+    credConfigParser.read(credConfigFilePath)
 
-mqttc = mqtt.Client(clientName)
+    log_level = configParser.get('LOGGER', 'logLevel')
+    modbusclient = ModbusSerialClient(method=configParser.get('MODBUS', 'method'), 
+                                port=configParser.get('MODBUS', 'port'), 
+                                timeout=configParser.getint('MODBUS', 'timeout'), 
+                                stopbits = configParser.getint('MODBUS', 'stopbits'), 
+                                bytesize = configParser.getint('MODBUS', 'bytesize'),  
+                                parity=configParser.get('MODBUS', 'parity'), 
+                                baudrate=configParser.getint('MODBUS', 'baudrate'))
+    confMqttClientName = configParser.get('MQTT', 'clientName')
+    mqttQos = configParser.getint('MQTT', 'mqttQos')
+    mqttRetain = configParser.getboolean('MQTT', 'mqttRetain')
 
-logging.config.fileConfig(fname=configParser.get('LOGGER','loggerConfigFileName'), disable_existing_loggers=configParser.getboolean('LOGGER','disableExistingLoggers'))
-logger = logging.getLogger(configParser.get('LOGGER','mainLoggerName'))
-logger.setLevel(log_level)
-logger.info('Log level is %s', logging.getLevelName(logger.level))
+    mqttc = mqtt.Client(confMqttClientName)
 
-confSiteName = configParser.get('MQTT', 'siteName')
-confPubTopicPrefix = configParser.get('MQTT', 'pubTopicPrefix')
-confPubTopicStateSuffix = configParser.get('MQTT', 'pubTopicStateSuffix')
-confSubTopicPrefix = configParser.get('MQTT', 'subTopicPrefix')
-confCmdTopicSuffix = configParser.get('MQTT', 'cmdTopicSuffix')
-confRelayOnCommandPayload = configParser.get('MQTT', 'relayOnCommandPayload')
-confRelayOffCommandPayload = configParser.get('MQTT', 'relayOffCommandPayload')
-confRelayStatusCommandPayload = configParser.get('MQTT', 'relayStatusCommandPayload')
+    logging.config.fileConfig(fname=configParser.get('LOGGER','loggerConfigFileName'), disable_existing_loggers=configParser.getboolean('LOGGER','disableExistingLoggers'))
+    logger = logging.getLogger(configParser.get('LOGGER','mainLoggerName'))
+    logger.setLevel(log_level)
+    logger.info('Log level is %s', logging.getLevelName(logger.level))
+
+    confSiteName = configParser.get('MQTT', 'siteName')
+    confPubTopicPrefix = configParser.get('MQTT', 'pubTopicPrefix')
+    confPubTopicStateSuffix = configParser.get('MQTT', 'pubTopicStateSuffix')
+    confSubTopicPrefix = configParser.get('MQTT', 'subTopicPrefix')
+    confCmdTopicSuffix = configParser.get('MQTT', 'cmdTopicSuffix')
+    confRelayOnCommandPayload = configParser.get('MQTT', 'relayOnCommandPayload')
+    confRelayOffCommandPayload = configParser.get('MQTT', 'relayOffCommandPayload')
+    confRelayStatusCommandPayload = configParser.get('MQTT', 'relayStatusCommandPayload')
 
 
-logger.debug('----------------- starting modbus relay interface -----------------')
+    logger.debug('----------------- starting modbus relay interface -----------------')
 
-# buffer of data to output to the serial port
-outputData = []
+    # buffer of data to output to the serial port
+    outputData = []
 
-cmdQueue = Queue()
+    cmdQueue = Queue()
 
-# Boards
-boardNames = configParser.getlist('MODBUS','boardNames')
-logger.debug('boardNames: ')
-logger.debug(boardNames)
-boards = []
-pubTopics = []
+    # Boards
+    boardNames = configParser.getlist('MODBUS','boardNames')
+    logger.debug('boardNames: ')
+    logger.debug(boardNames)
+    boards = []
+    pubTopics = []
 
-for i in range(len(boardNames)):
-    logger.debug('Adding board %s at pos %d', boardNames[i], i)
-    
-    boards.append(WaveshareModbusRtuRelayBoard(client, i+1, boardNames[i], logger))
-
-    ### TODO
-    # Publish topics structured as <siteName>/<pubTopicPrefix>/<board_name> (+ /CHx/state for individual states) 
-    # CH1..8 and state will added on relevant publish 
-
-    pubTopics.append("%s%s%s" % (confSiteName,confPubTopicPrefix,boardNames[i]))
-
-####  MQTT callbacks
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-    #rc 0 successful connect
-        logger.debug("Connected")
-    else:
-        raise Exception
-    
-    # subscribe to the MQTT cmd messages
-    # Subscribe topics structured as <sitename>/<subTopicPrefix>/<board_name>/CHx/<cmdTopicSuffix>
     for i in range(len(boardNames)):
+        logger.debug('Adding board %s at pos %d', boardNames[i], i)
+        
+        boards.append(WaveshareModbusRtuRelayBoard(modbusclient, i+1, boardNames[i], logger))
 
-        subTopic = "%s%s%s%s%s" % (confSiteName, confSubTopicPrefix, boardNames[i], "/+", confCmdTopicSuffix)
-        logger.debug("Subscribing to: %s", subTopic)                                 
-        output_mid = client.subscribe(subTopic)
+        ### TODO
+        # Publish topics structured as <siteName>/<pubTopicPrefix>/<board_name> (+ /CHx/state for individual states) 
+        # CH1..8 and state will added on relevant publish 
 
-        subTopic = "%s%s%s%s" % (confSiteName, confSubTopicPrefix, boardNames[i], confCmdTopicSuffix)
-        logger.debug("Subscribing to: %s", subTopic)                                 
-        output_mid = client.subscribe(subTopic)
- 
-def on_publish(client, userdata, mid):
-    logger.debug("Published: %s", str(mid))
+        pubTopics.append("%s%s%s" % (confSiteName,confPubTopicPrefix,boardNames[i]))
 
-def on_subscribe(client, userdata, mid, granted_qos):
-    logger.debug("Subscribed: %s", str(mid))
-
-def on_message_output(client, userdata, msg):
-    logger.debug("Output topic: %s", msg.topic)
-    logger.debug("Output data: %s", msg.payload)
-    #add to outputData list
-    outputData.append(msg)
-
-def on_message(client, userdata, message):
-    cmdQueue.put(message)
-
-def processCmdMessages():
-    while not cmdQueue.empty():
-        message = cmdQueue.get()
-        if message is None:
-            continue
-
-        topic = message.topic
-        payload = message.payload.decode("UTF-8")
-
-        logger.debug("Message Received: %s %s", topic, payload)
-
-        # Select board by name
-        targetBoardName = topic.split("/")[2] # <sitename>/<subTopicPrefix>/<board_name>/
-
-        targetBoardIndex = -1
+    ####  MQTT callbacks
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+        #rc 0 successful connect
+            logger.debug("Connected")
+        else:
+            raise Exception
+        
+        # subscribe to the MQTT cmd messages
+        # Subscribe topics structured as <sitename>/<subTopicPrefix>/<board_name>/CHx/<cmdTopicSuffix>
         for i in range(len(boardNames)):
-            if(boardNames[i] == targetBoardName):
-                targetBoardIndex = i
 
-        logger.debug("Target board index is: %d", targetBoardIndex)
-        if(targetBoardIndex >= 0):
+            subTopic = "%s%s%s%s%s" % (confSiteName, confSubTopicPrefix, boardNames[i], "/+", confCmdTopicSuffix)
+            logger.debug("Subscribing to: %s", subTopic)                                 
+            output_mid = client.subscribe(subTopic)
 
-            if(topic.split("/")[3] == confCmdTopicSuffix[1:]):
-                # Command to whole board
-                logger.debug("Targetting whole board %s", targetBoardName)
-                if(payload == confRelayOnCommandPayload):
-                    boards[i].turnAllOn()
-                elif(payload == confRelayOffCommandPayload):
-                    boards[i].turnAllOff()
-                elif(payload == confRelayStatusCommandPayload):
-                    mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
-                else:
-                    logger.warning("Unknown command: %s", payload)
-            else:  
-                channelNumber = -1 
-                channelNumber = int(topic.split("/")[3][2:]) # <sitename>/<subTopicPrefix>/<board_name>/CH1/<cmdSuffix>
+            subTopic = "%s%s%s%s" % (confSiteName, confSubTopicPrefix, boardNames[i], confCmdTopicSuffix)
+            logger.debug("Subscribing to: %s", subTopic)                                 
+            output_mid = client.subscribe(subTopic)
+    
+    def on_publish(client, userdata, mid):
+        logger.debug("Published: %s", str(mid))
 
-                logger.debug("Targetting board %s CH%d", targetBoardName, channelNumber)
+    def on_subscribe(client, userdata, mid, granted_qos):
+        logger.debug("Subscribed: %s", str(mid))
 
-                if(channelNumber>0 and channelNumber<9):
+    def on_message_output(client, userdata, msg):
+        logger.debug("Output topic: %s", msg.topic)
+        logger.debug("Output data: %s", msg.payload)
+        #add to outputData list
+        outputData.append(msg)
+
+    def on_message(client, userdata, message):
+        cmdQueue.put(message)
+
+    def processCmdMessages():
+        while not cmdQueue.empty():
+            message = cmdQueue.get()
+            if message is None:
+                continue
+
+            topic = message.topic
+            payload = message.payload.decode("UTF-8")
+
+            logger.debug("Message Received: %s %s", topic, payload)
+
+            # Select board by name
+            targetBoardName = topic.split("/")[2] # <sitename>/<subTopicPrefix>/<board_name>/
+
+            targetBoardIndex = -1
+            for i in range(len(boardNames)):
+                if(boardNames[i] == targetBoardName):
+                    targetBoardIndex = i
+
+            logger.debug("Target board index is: %d", targetBoardIndex)
+            if(targetBoardIndex >= 0):
+
+                if(topic.split("/")[3] == confCmdTopicSuffix[1:]):
+                    # Command to whole board
+                    logger.debug("Targetting whole board %s", targetBoardName)
                     if(payload == confRelayOnCommandPayload):
-                        logger.debug("Turning on CH%d on %s", channelNumber, targetBoardName)
-                        boards[i].turnOnRelay(channelNumber)
+                        boards[i].turnAllOn()
                     elif(payload == confRelayOffCommandPayload):
-                        logger.debug("Turning off CH%d on %s", channelNumber, targetBoardName)
-                        boards[i].turnOffRelay(channelNumber)
+                        boards[i].turnAllOff()
+                    elif(payload == confRelayStatusCommandPayload):
+                        mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
                     else:
                         logger.warning("Unknown command: %s", payload)
-                else:
-                    logger.warning("Incorrect channel number!, skipped")
-        else:
-            logger.warning("Target board not found, skipped")    
-        
-        updateStates()
+                else:  
+                    channelNumber = -1 
+                    channelNumber = int(topic.split("/")[3][2:]) # <sitename>/<subTopicPrefix>/<board_name>/CH1/<cmdSuffix>
 
-def updateStates():
-    logger.debug("Updating relay states")
-    for i in range(len(boardNames)):
+                    logger.debug("Targetting board %s CH%d", targetBoardName, channelNumber)
 
-        mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
-        for j in range(8):
-            mqttc.publish(pubTopics[i]+"/CH"+str(j+1)+confPubTopicStateSuffix, boards[i].getChannelState((j+1)), qos=mqttQos,retain=mqttRetain)
-    logger.debug("Relay states updated")
+                    if(channelNumber>0 and channelNumber<9):
+                        if(payload == confRelayOnCommandPayload):
+                            logger.debug("Turning on CH%d on %s", channelNumber, targetBoardName)
+                            boards[i].turnOnRelay(channelNumber)
+                        elif(payload == confRelayOffCommandPayload):
+                            logger.debug("Turning off CH%d on %s", channelNumber, targetBoardName)
+                            boards[i].turnOffRelay(channelNumber)
+                        else:
+                            logger.warning("Unknown command: %s", payload)
+                    else:
+                        logger.warning("Incorrect channel number!, skipped")
+            else:
+                logger.warning("Target board not found, skipped")    
+            
+            updateStates()
+
+    def updateStates():
+        logger.debug("Updating relay states")
+        for i in range(len(boardNames)):
+
+            mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
+            for j in range(8):
+                mqttc.publish(pubTopics[i]+"/CH"+str(j+1)+confPubTopicStateSuffix, boards[i].getChannelState((j+1)), qos=mqttQos,retain=mqttRetain)
+        logger.debug("Relay states updated")
 
 
-#called on exit
-#close serial, disconnect MQTT
-def cleanup():
-    logger.debug("Ending and cleaning up")
-    client.close()
-    mqttc.disconnect()
+    #called on exit
+    #close serial, disconnect MQTT
+    def cleanup():
+        logger.info("Ending and cleaning up")
+        modbusclient.close()
+        mqttc.disconnect()
 
-def connectMqtt():
+    def connectMqtt():
+        try:
+            logger.debug("Connecting to MQTT broker.")
+            #attach MQTT callbacks
+            mqttc.on_connect = on_connect
+            mqttc.on_publish = on_publish
+            mqttc.on_subscribe = on_subscribe
+            mqttc.on_message = on_message
+            mqttc.username_pw_set(credConfigParser.get('MQTT', 'mqttUsername'), credConfigParser.get('MQTT', 'mqttPasswd'))
+            mqttc.message_callback_add(configParser.get('MQTT', 'callbackTopicPrefix') + confMqttClientName + configParser.get('MQTT', 'callbackTopicSuffix'), on_message_output)
+
+            # Connect to broker. Try twice, as connect was failing when service started at boot
+            try:
+                mqttc.connect(configParser.get('MQTT', 'mqttServer'), configParser.getint('MQTT', 'mqttPort'), configParser.getint('MQTT', 'mqttTimeout'))
+            except Exception:
+                logger.exception("Exception during MQTT connect, sleep 10 seconds and retry", exc_info=True)
+                time.sleep(10)
+                mqttc.connect(configParser.get('MQTT', 'mqttServer'), configParser.getint('MQTT', 'mqttPort'), configParser.getint('MQTT', 'mqttTimeout'))
+
+            # start the mqttc client thread
+            mqttc.loop_start()
+            
+            logger.info("Modbus and MQTT clients started and connected!")
+        except Exception:
+            logger.exception("Exception during MQTT connect", exc_info=True)
+            cleanup
+            exit(1)
+
+    def readRelays():
+        logger.debug("Read Meter - not implemented yet :)")
+
+    ############ MAIN PROGRAM START
     try:
-        logger.debug("Connecting to MQTT broker...")
-        #attach MQTT callbacks
-        mqttc.on_connect = on_connect
-        mqttc.on_publish = on_publish
-        mqttc.on_subscribe = on_subscribe
-        mqttc.on_message = on_message
-        mqttc.username_pw_set(credConfigParser.get('MQTT', 'mqttUsername'), credConfigParser.get('MQTT', 'mqttPasswd'))
-        mqttc.message_callback_add(configParser.get('MQTT', 'callbackTopicPrefix') + clientName + configParser.get('MQTT', 'callbackTopicSuffix'), on_message_output)
+        logger.info("Modbus to Mqtt service starting.")
+        #connect to serial port
+        connectval = modbusclient.connect()
+        logger.debug("Modbus client connected.")
+    except:
+        logger.exception("Failed to connect modbus")
+        #print "Failed to connect modbus"
+        #unable to continue with no modbus connection
+        raise SystemExit
 
-        #connect to broker
-        mqttc.connect(configParser.get('MQTT', 'mqttServer'), configParser.getint('MQTT', 'mqttPort'), configParser.getint('MQTT', 'mqttTimeout'))
+    try:
 
-        # start the mqttc client thread
-        mqttc.loop_start()
+        connectMqtt()
+        # client.connect()
+
+        # Publish initial states after connect
+        updateStates()
+            # Initial tests to toggle relays
+            # logger.debug("Writing...")
+            # boards[i].writeRelays([False,True,False,True,False,True,False,True])
+            # mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
+            # time.sleep(1)
+            # logger.debug("Writing...")
+            # boards[i].writeRelays([True,False,True,False,True,False,True,False])
+            # mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
+
+            # boards[i+1].setBaudRate9600N()
         
-        logger.debug("...MQTT client started and connected!")
-    except Exception:
-        logger.exception("Exception during MQTT connect", exc_info=True)
-        cleanup
-        exit(1)
+        # loop forever
+        while(True):
+            processCmdMessages()
+            time.sleep(1)
 
-def readRelays():
-    logger.debug("Read Meter - not implemented yet :)")
+        cleanup()
+        logger.info('----------------- completed -----------------')
 
-############ MAIN PROGRAM START
-try:
-    logger.debug("Connecting to modbus")
-    #connect to serial port
-    connectval = client.connect()
-
-except:
-    logger.exception("Failed to connect modbus")
-    #print "Failed to connect modbus"
-    #unable to continue with no modbus connection
-    raise SystemExit
-
-try:
-
-    connectMqtt()
-    # client.connect()
-
-    # Publish initial states after connect
-    updateStates()
-        # Initial tests to toggle relays
-        # logger.debug("Writing...")
-        # boards[i].writeRelays([False,True,False,True,False,True,False,True])
-        # mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
-        # time.sleep(1)
-        # logger.debug("Writing...")
-        # boards[i].writeRelays([True,False,True,False,True,False,True,False])
-        # mqttc.publish(pubTopics[i], boards[i].readRelays(), qos=mqttQos,retain=mqttRetain)
-
-        # boards[i+1].setBaudRate9600N()
-    
-    # loop forever
-    while(True):
-        processCmdMessages()
-        time.sleep(1)
-
-    cleanup()
-    logger.debug('----------------- completed -----------------')
-
-# handle app closure
-except (KeyboardInterrupt):
-    logger.exception("Interrupt received")
-    #print "Interrupt received"
-    cleanup()
-except (RuntimeError):
-    logger.exception("uh-oh! time to die")
-    #print "uh-oh! time to die"
-    cleanup()
+    # handle app closure
+    except (KeyboardInterrupt):
+        logger.exception("Interrupt received")
+        #print "Interrupt received"
+        cleanup()
+    except (RuntimeError, SystemExit):
+        logger.exception("uh-oh! time to die")
+        #print "uh-oh! time to die"
+        cleanup()
