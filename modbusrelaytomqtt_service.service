@@ -1,0 +1,24 @@
+# Make link to this file from ~/.config/user/modbusrelaytomqtt_service.service
+# systemctl --user list-unit-files | grep modbus
+# systemctl --user daemon-reload
+# systemctl --user start modbusrelaytomqtt_service
+
+[Unit]
+# Human readable name of the unit
+Description=Modbus relay board to mqtt service
+
+[Service]
+# Command to execute when the service is started
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/j/scripts/modbusrelay/modbusrelaytomqtt.py
+Restart=always
+# StartLimitIntervalSec=10, StartLimitBurst=1
+
+[Install]
+# To start automatically at boot:
+WantedBy=default.target
+
+# To enable autostart at boot: systemctl --user enable modbusrelaytomqtt_service
+# To disable autostart: systemctl --user disable python_demo_service
+# And allow the service to start regardless of logging in or out
+# sudo loginctl enable-linger $USER
